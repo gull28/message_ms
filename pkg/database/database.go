@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func main() {
+func (app *application) main() {
 
 	dotEnv := godotenv.Load("")
 

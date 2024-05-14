@@ -1,11 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type application struct {
@@ -19,13 +24,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	port := flag.String("port", ":8080", "HTTP Port to run the server on")
-	http.HandleFunc("/hello", handler)
 	flag.Parse()
+
+	dotEnv := godotenv.Load("")
 
 	// simple logger
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
+	if dotEnv != nil {
+		errorLog.Println("Error loading .env file")
+		return
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
+
+	db, err := openDB(dsn)
+
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
+	defer db.Close()
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
@@ -40,8 +60,19 @@ func main() {
 	// http.HandleFunc("/messages", getMessages)
 
 	infoLog.Printf("Starting server on %s", *port)
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 
 	errorLog.Fatal(err)
 
+}
+
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
