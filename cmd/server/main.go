@@ -26,7 +26,7 @@ func main() {
 	port := flag.String("port", ":8080", "HTTP Port to run the server on")
 	flag.Parse()
 
-	dotEnv := godotenv.Load("")
+	dotEnv := godotenv.Load("../../.env")
 
 	// simple logger
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -34,10 +34,12 @@ func main() {
 
 	if dotEnv != nil {
 		errorLog.Println("Error loading .env file")
+		// log dotenv variable
+		errorLog.Println(dotEnv)
 		return
 	}
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
 
 	db, err := openDB(dsn)
 
@@ -63,7 +65,6 @@ func main() {
 	err = srv.ListenAndServe()
 
 	errorLog.Fatal(err)
-
 }
 
 func openDB(dsn string) (*sql.DB, error) {
