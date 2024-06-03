@@ -1,22 +1,27 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 
+	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-func (app *application) main() {
+type Database struct {
+	*gorm.DB
+}
+
+var DB *gorm.DB
+
+func (app *application) initDB() *gorm.DB {
 
 	dotEnv := godotenv.Load("")
 
 	if dotEnv != nil {
 		fmt.Println("Error loading .env file")
-		return
 	}
 
 	username := os.Getenv("DB_USER")
@@ -24,18 +29,23 @@ func (app *application) main() {
 	dbName := os.Getenv("DB_NAME")
 
 	// Open a connection to the database
-	dbUrl := fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable", username, password, dbName)
-	db, err := sql.Open("postgres", dbUrl)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
+	dbUrl := fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True&loc=Local", username, password, dbName)
+	db, err := gorm.Open("mysql", dbUrl)
 
-	// Check if the connection is successful
-	err = db.Ping()
 	if err != nil {
-		panic(err.Error())
+		fmt.Println("Failed to connect to the database!")
+		panic(err)
 	}
 
-	fmt.Println("Connected to the database!")
+	DB = db
+
+	return DB
+}
+
+func GetDB() *gorm.DB {
+	return DB
+}
+
+func CloseDB() {
+	DB.Close()
 }
