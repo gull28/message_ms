@@ -23,5 +23,7 @@ func validateBearerToken(r *http.Request, w http.ResponseWriter) bool {
 		return false
 	}
 
+	// todo: implement bearer token validation
+
 	return true
 }

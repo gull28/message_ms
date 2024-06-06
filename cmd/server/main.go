@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gull28/message_ms/internal/db"
 	"github.com/joho/godotenv"
-	_ "github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -39,9 +39,7 @@ func main() {
 		return
 	}
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
-
-	db, err := openDB(dsn)
+	db, err := openDB()
 
 	if err != nil {
 		errorLog.Fatal(err)
@@ -67,6 +65,8 @@ func main() {
 	errorLog.Fatal(err)
 }
 
-func openDB(dsn string) (*sql.DB, error) {
-	db = GetDB()
+func openDB() (*sql.DB, error) {
+	database := db.InitDB()
+
+	return database.DB(), nil
 }

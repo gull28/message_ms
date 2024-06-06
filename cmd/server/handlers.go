@@ -18,3 +18,21 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
+	if validateMethod(r, w, http.MethodPost) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Code sent!"}`))
+
+		return
+	}
+}
+
+func (app *application) validateCode(w http.ResponseWriter, r *http.Request) {
+	if validateMethod(r, w, http.MethodPost) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Code validated!"}`))
+
+		return
+	}
+}

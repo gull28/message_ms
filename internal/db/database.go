@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
-	_ "github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -16,7 +15,7 @@ type Database struct {
 
 var DB *gorm.DB
 
-func (app *application) initDB() *gorm.DB {
+func InitDB() *gorm.DB {
 
 	dotEnv := godotenv.Load("")
 
