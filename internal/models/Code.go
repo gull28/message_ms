@@ -8,7 +8,16 @@ import (
 
 type Code struct {
 	gorm.Model // base fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`
-	code       string
-	expiresAt  time.Time
-	status     string `gorm:"not null default:'pending' enum('pending', 'sent', 'failed')"`
+	Code       string
+	ExpiresAt  time.Time
+	Status     string `gorm:"not null default:'pending' enum('pending', 'failed', 'verified')"`
+}
+
+func CheckValidity(db *gorm.DB, code string) (Code, error) {
+	var codeModel Code
+	if err := db.Where("code = ?", code).First(&codeModel).Error; err != nil {
+		return Code{}, err
+	}
+
+	return codeModel, nil
 }
