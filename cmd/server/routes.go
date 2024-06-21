@@ -6,9 +6,9 @@ import (
 
 func (app *application) routes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", app.home)
+	mux.Handle("/", MultipleMiddleware(http.HandlerFunc(app.home), AuthMiddleware, MethodMiddleware(http.MethodGet)))
 
-	mux.HandleFunc("/send-code", app.sendCode)
+	mux.Handle("/send-code", MultipleMiddleware(http.HandlerFunc(app.home), AuthMiddleware, MethodMiddleware(http.MethodPost)))
 
 	return mux
 }

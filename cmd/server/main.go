@@ -34,7 +34,6 @@ func main() {
 
 	if dotEnv != nil {
 		errorLog.Println("Error loading .env file")
-		// log dotenv variable
 		errorLog.Println(dotEnv)
 		return
 	}

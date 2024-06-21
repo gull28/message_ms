@@ -5,34 +5,27 @@ import (
 )
 
 func getMessages(r *http.Request, w http.ResponseWriter) {
-	validateMethod(r, w, http.MethodGet)
 
 	w.Header().Set("Content-Type", "application/json")
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	if validateMethod(r, w, http.MethodGet) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Hello, World!"}`))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Hello, World!"}`))
 
-		return
-	}
+	return
 }
 
 func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
-	if validateMethod(r, w, http.MethodPost) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Code sent!"}`))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Code sent!"}`))
 
-		return
-	}
+	return
 }
 
 func (app *application) validateCode(w http.ResponseWriter, r *http.Request) {
-	if validateMethod(r, w, http.MethodPost) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Code validated!"}`))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Code validated!"}`))
 
-		return
-	}
+	return
 }
