@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gull28/message_ms/internal/db"
+	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -16,6 +16,7 @@ import (
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	db       *gorm.DB
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func main() {
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
+		db:       db,
 	}
 
 	srv := &http.Server{
@@ -64,8 +66,8 @@ func main() {
 	errorLog.Fatal(err)
 }
 
-func openDB() (*sql.DB, error) {
+func openDB() (*gorm.DB, error) {
 	database := db.InitDB()
 
-	return database.DB(), nil
+	return database, nil
 }

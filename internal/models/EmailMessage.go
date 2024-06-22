@@ -25,3 +25,13 @@ func GetEmailCodeByUserID(db *gorm.DB, userID uint) (Code, error) {
 
 	return code, nil
 }
+
+func GetEmailAttemptCount(db *gorm.DB, userId string) (int, error) {
+	var emailMessage EmailMessage
+	var count int
+	if err := db.Model(&emailMessage).Where("user_id = ?", userId).Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

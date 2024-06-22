@@ -25,3 +25,13 @@ func GetSmsCodeByUserID(db *gorm.DB, userID uint) (Code, error) {
 
 	return code, nil
 }
+
+func GetSmsAttemptCount(db *gorm.DB, userId string) (int, error) {
+	var smsMessage SmsMessage
+	var count int
+	if err := db.Model(&smsMessage).Where("user_id = ?", userId).Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

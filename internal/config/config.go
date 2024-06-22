@@ -19,6 +19,17 @@ type Smtp struct {
 	password string
 }
 
+type Sms struct {
+}
+
+type CodeSettings struct {
+	Length      int
+	Expiry      int
+	Attempts    int
+	Resends     int
+	ResendTimer int
+}
+
 func getDsn() string {
 	dotEnv := godotenv.Load("")
 
@@ -63,8 +74,12 @@ func LoadConfig() Config {
 
 	// SMS := getSMS()
 
+	// CodeSettings := getCodeSettings()
+
 	return Config{
 		DSN:  DSN,
 		Smtp: Smtp,
+		// CodeSettings: CodeSettings,
+		// SMS: SMS,
 	}
 }
