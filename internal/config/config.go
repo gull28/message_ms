@@ -2,14 +2,18 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DSN  string
-	Smtp Smtp
+	Dsn          string
+	Smtp         Smtp
+	Sms          Sms
+	CodeSettings CodeSettings
 }
 
 type Smtp struct {
@@ -20,6 +24,8 @@ type Smtp struct {
 }
 
 type Sms struct {
+	APIKey   string
+	SenderID string
 }
 
 type CodeSettings struct {
@@ -30,56 +36,91 @@ type CodeSettings struct {
 	ResendTimer int
 }
 
-func getDsn() string {
-	dotEnv := godotenv.Load("")
-
-	if dotEnv != nil {
-		fmt.Println("Error loading .env file")
+func getEnvAsInt(key string, defaultValue int) int {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
 	}
+
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Printf("Warning: Invalid value for %s: %s. Using default: %d\n", key, valueStr, defaultValue)
+		return defaultValue
+	}
+	return value
+}
+
+func getEnvAsString(key string, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func loadEnv() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: Error loading .env file")
+	}
+}
+
+func getDsn() string {
+	loadEnv()
 
 	username := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	// Open a connection to the database
 	dbUrl := fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True&loc=Local", username, password, dbName)
 
 	return dbUrl
 }
 
 func getSmtp() Smtp {
-	dotEnv := godotenv.Load("")
-
-	if dotEnv != nil {
-		fmt.Println("Error loading .env file")
-	}
-
-	smtpHost := os.Getenv("SMTP_SERVER_HOST")
-	smtpPort := os.Getenv("SMTP_SERVER_PORT")
-	smtpUsername := os.Getenv("SMTP_USER")
-	smtpPassword := os.Getenv("SMTP_PASS")
+	loadEnv()
 
 	return Smtp{
-		host:     smtpHost,
-		port:     smtpPort,
-		username: smtpUsername,
-		password: smtpPassword,
+		host:     getEnvAsString("SMTP_HOST", "localhost"),
+		port:     getEnvAsString("SMTP_PORT", "1025"),
+		username: getEnvAsString("SMTP_USERNAME", ""),
+		password: getEnvAsString("SMTP_PASSWORD", ""),
+	}
+}
+
+func getSms() Sms {
+	loadEnv()
+
+	return Sms{
+		APIKey:   getEnvAsString("SMS_API_KEY", ""),
+		SenderID: getEnvAsString("SMS_SENDER_ID", ""),
+	}
+}
+
+func getCodeSettings() CodeSettings {
+	loadEnv()
+
+	return CodeSettings{
+		Length:      getEnvAsInt("CODE_LENGTH", 6),
+		Expiry:      getEnvAsInt("CODE_EXPIRY", 300),
+		Attempts:    getEnvAsInt("CODE_ATTEMPTS", 3),
+		Resends:     getEnvAsInt("CODE_RESENDS", 2),
+		ResendTimer: getEnvAsInt("CODE_RESEND_TIMER", 60),
 	}
 }
 
 func LoadConfig() Config {
-	DSN := getDsn()
+	Dsn := getDsn()
 
 	Smtp := getSmtp()
 
-	// SMS := getSMS()
+	Sms := getSms()
 
-	// CodeSettings := getCodeSettings()
+	CodeSettings := getCodeSettings()
 
 	return Config{
-		DSN:  DSN,
-		Smtp: Smtp,
-		// CodeSettings: CodeSettings,
-		// SMS: SMS,
+		Dsn:          Dsn,
+		Smtp:         Smtp,
+		CodeSettings: CodeSettings,
+		Sms:          Sms,
 	}
 }
