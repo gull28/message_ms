@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/gull28/message_ms/internal/config"
 	"github.com/gull28/message_ms/internal/models"
 )
 
@@ -19,8 +20,22 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
+	count, err := models.GetAttemptCount(app.db, r.URL.Query().Get("userId"))
 
-	code := GenerateCode()
+	codeConfig := config.LoadConfig().CodeSettings
+
+	if count >= codeConfig.Resends {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message": "Try again later!"}`))
+		return
+	}
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Error getting attempt count!"}`))
+		return
+	}
 
 	msgType := r.URL.Query().Get("type")
 
@@ -31,20 +46,15 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		count, err := models.GetSmsAttemptCount(app.db, r.URL.Query().Get("userId"))
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error getting attempt count!"}`))
-			return
-		}
-
-		// todo: get config value from .env
-
 	}
 
 	if msgType == "email" {
-		// validate email
+		if ValidateEmail(r.URL.Query().Get("email")) == false {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Invalid email address!"}`))
+			return
+		}
+
 	}
 
 	w.Header().Set("Content-Type", "application/json")
