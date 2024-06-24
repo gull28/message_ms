@@ -17,10 +17,10 @@ type Config struct {
 }
 
 type Smtp struct {
-	host     string
-	port     string
-	username string
-	password string
+	Host     string
+	Port     string
+	Username string
+	Password string
 }
 
 type Sms struct {
@@ -80,10 +80,10 @@ func getSmtp() Smtp {
 	loadEnv()
 
 	return Smtp{
-		host:     getEnvAsString("SMTP_HOST", "localhost"),
-		port:     getEnvAsString("SMTP_PORT", "1025"),
-		username: getEnvAsString("SMTP_USERNAME", ""),
-		password: getEnvAsString("SMTP_PASSWORD", ""),
+		Host:     getEnvAsString("SMTP_HOST", "localhost"),
+		Port:     getEnvAsString("SMTP_PORT", "1025"),
+		Username: getEnvAsString("SMTP_USERNAME", "user"),
+		Password: getEnvAsString("SMTP_PASSWORD", "123"),
 	}
 }
 
