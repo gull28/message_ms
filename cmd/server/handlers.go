@@ -20,7 +20,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
-	count, err := models.GetAttemptCount(app.db, r.URL.Query().Get("userId"))
+	count, err := models.GetResendCount(app.db, r.URL.Query().Get("userId"))
 
 	codeConfig := config.LoadConfig().CodeSettings
 
@@ -64,8 +64,9 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) validateCode(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"message": "Code validated!"}`))
 
-	return
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write([]byte(`{"message": "Code validated!"}`))
+
+	// return
 }
