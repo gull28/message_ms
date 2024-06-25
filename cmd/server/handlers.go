@@ -93,9 +93,23 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) validateCode(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	userId := r.URL.Query().Get("userId")
 
-	// w.Header().Set("Content-Type", "application/json")
-	// w.Write([]byte(`{"message": "Code validated!"}`))
+	isValid, err := models.CheckValidity(app.db, code, userId)
 
-	// return
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Error validating code!"}`))
+		return
+	}
+
+	if isValid == false {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Invalid code!"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Code is valid!"}`))
 }

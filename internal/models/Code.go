@@ -14,17 +14,31 @@ type Code struct {
 	UserId     string
 	ExpiresAt  time.Time
 	Attempt    int
-	Status     string `gorm:"not null default:'pending' enum('pending', 'failed', 'verified', 'expired')"`
+	Status     string `gorm:"not null default:'pending' enum('pending', 'failed', 'verified')"`
 }
 
 func CheckValidity(db *gorm.DB, code string, userId string) (bool, error) {
+	allowedAttempts := config.LoadConfig().CodeSettings.Attempts
+
 	var codeModel Code
 	if err := db.Where("UserId = ?", userId).Order("CreatedAt DESC").First(&codeModel).Error; err != nil {
 		return false, err
 	}
 
+	if codeModel.Attempt >= allowedAttempts {
+		err := errors.New("Maximum attempts reached")
+		return false, err
+	}
+
 	if codeModel.Code != code {
 		err := errors.New("Invalid code")
+
+		codeModel.Attempt++
+
+		if err := db.Save(&codeModel).Error; err != nil {
+			return false, err
+		}
+
 		return false, err
 	}
 
@@ -53,6 +67,7 @@ func CreateCode(db *gorm.DB, userId string, code string, expiresAt time.Time) (C
 		UserId:    userId,
 		Attempt:   0,
 		ExpiresAt: expiresAt,
+		Status:    "pending",
 	}
 
 	if err := db.Create(&codeModel).Error; err != nil {
