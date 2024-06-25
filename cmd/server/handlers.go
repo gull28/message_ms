@@ -2,8 +2,10 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gull28/message_ms/internal/config"
+	"github.com/gull28/message_ms/internal/delivery"
 	"github.com/gull28/message_ms/internal/models"
 )
 
@@ -45,7 +47,6 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message": "Invalid phone number!"}`))
 			return
 		}
-
 	}
 
 	if msgType == "email" {
@@ -55,6 +56,34 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		code := GenerateCode()
+
+		err := delivery.SendMail(r.URL.Query().Get("email"), "Verification Code", code)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error sending code!"}`))
+			return
+		}
+
+		codeObj, err := models.CreateCode(app.db, r.URL.Query().Get("userId"), code, time.Now().Add(time.Duration(codeConfig.Expiry)*time.Minute))
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error creating code!"}`))
+			return
+		}
+
+		err = models.CreateMail(app.db, r.URL.Query().Get("userId"), r.URL.Query().Get("email"), codeObj.ID)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error creating mail!"}`))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Code sent!"}`))
 	}
 
 	w.Header().Set("Content-Type", "application/json")

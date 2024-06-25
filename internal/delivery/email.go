@@ -6,7 +6,7 @@ import (
 	"github.com/gull28/message_ms/internal/config"
 )
 
-func sendEmail(to string, subject string, body string) error {
+func SendMail(to string, subject string, code string) error {
 	smtpConfig := config.LoadConfig().Smtp
 
 	smtpHost := smtpConfig.Host
@@ -16,6 +16,8 @@ func sendEmail(to string, subject string, body string) error {
 
 	auth := smtp.PlainAuth("", smtpUser, smtpPassword, smtpHost)
 
+	body := BuildEmailMessage(code)
+	// body := "Your verification code is: " + code
 	from := smtpUser
 	msg := "From: " + from + "\n" +
 		"To: " + to + "\n" +
@@ -30,4 +32,10 @@ func sendEmail(to string, subject string, body string) error {
 	}
 
 	return nil
+}
+
+func BuildEmailMessage(code string) string {
+	// implement your own email message for production
+	// use a template engine or a library to build the message for convenience
+	return "Your verification code is: " + code
 }

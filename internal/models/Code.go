@@ -47,7 +47,7 @@ func GetResendCount(db *gorm.DB, userId string) (int, error) {
 	return count, nil
 }
 
-func CreateCode(db *gorm.DB, userId string, code string, expiresAt time.Time) error {
+func CreateCode(db *gorm.DB, userId string, code string, expiresAt time.Time) (Code, error) {
 	codeModel := Code{
 		Code:      code,
 		UserId:    userId,
@@ -56,8 +56,8 @@ func CreateCode(db *gorm.DB, userId string, code string, expiresAt time.Time) er
 	}
 
 	if err := db.Create(&codeModel).Error; err != nil {
-		return err
+		return Code{}, err
 	}
 
-	return nil
+	return codeModel, nil
 }

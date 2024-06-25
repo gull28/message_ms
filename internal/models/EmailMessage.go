@@ -6,7 +6,7 @@ import (
 
 type EmailMessage struct {
 	gorm.Model        // base fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`
-	UserId     uint   `gorm:"not null; uniqueIndex"`
+	UserId     string `gorm:"not null; uniqueIndex"`
 	Email      string `gorm:"not null;"`
 	CodeID     uint   `gorm:"not null"`
 	Code       Code   `gorm:"foreignKey:CodeID"`
@@ -24,4 +24,18 @@ func GetEmailCodeByUserID(db *gorm.DB, userID uint) (Code, error) {
 	}
 
 	return code, nil
+}
+
+func CreateMail(db *gorm.DB, userID string, email string, codeID uint) error {
+	emailMessage := EmailMessage{
+		UserId: userID,
+		Email:  email,
+		CodeID: codeID,
+	}
+
+	if err := db.Create(&emailMessage).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
