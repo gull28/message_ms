@@ -26,6 +26,8 @@ type Smtp struct {
 type Sms struct {
 	APIKey   string
 	SenderID string
+	From     string
+	SMSHost  string
 }
 
 type CodeSettings struct {
@@ -93,6 +95,8 @@ func getSms() Sms {
 	return Sms{
 		APIKey:   getEnvAsString("SMS_API_KEY", ""),
 		SenderID: getEnvAsString("SMS_SENDER_ID", ""),
+		From:     getEnvAsString("SMS_FROM", ""),
+		SMSHost:  getEnvAsString("SMS_HOST", ""),
 	}
 }
 

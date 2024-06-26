@@ -6,7 +6,7 @@ import (
 
 type SmsMessage struct {
 	gorm.Model        // base fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`
-	UserId     uint   `gorm:"not null; uniqueIndex"`
+	UserId     string `gorm:"not null; uniqueIndex"`
 	Phone      string `gorm:"not null; uniqueIndex"`
 	CodeID     uint   `gorm:"not null"`
 	Code       Code   `gorm:"foreignKey:CodeID"`
@@ -26,12 +26,16 @@ func GetSmsCodeByUserID(db *gorm.DB, userID uint) (Code, error) {
 	return code, nil
 }
 
-func GetSmsAttemptCount(db *gorm.DB, userId string) (int, error) {
-	var smsMessage SmsMessage
-	var count int
-	if err := db.Model(&smsMessage).Where("user_id = ?", userId).Count(&count).Error; err != nil {
-		return 0, err
+func CreateSMS(db *gorm.DB, userID string, phone string, codeID uint) error {
+	smsMessage := SmsMessage{
+		UserId: userID,
+		Phone:  phone,
+		CodeID: codeID,
 	}
 
-	return count, nil
+	if err := db.Create(&smsMessage).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

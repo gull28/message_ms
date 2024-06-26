@@ -21,12 +21,25 @@ func CheckValidity(db *gorm.DB, code string, userId string) (bool, error) {
 	allowedAttempts := config.LoadConfig().CodeSettings.Attempts
 
 	var codeModel Code
+
 	if err := db.Where("UserId = ?", userId).Order("CreatedAt DESC").First(&codeModel).Error; err != nil {
+		return false, err
+	}
+
+	if codeModel.Status == "verified" {
+		err := errors.New("Code already verified")
 		return false, err
 	}
 
 	if codeModel.Attempt >= allowedAttempts {
 		err := errors.New("Maximum attempts reached")
+
+		// set status to failed if not already set
+		if codeModel.Status != "failed" {
+			codeModel.Status = "failed"
+			db.Save(&codeModel)
+		}
+
 		return false, err
 	}
 
@@ -41,6 +54,9 @@ func CheckValidity(db *gorm.DB, code string, userId string) (bool, error) {
 
 		return false, err
 	}
+
+	codeModel.Status = "verified"
+	db.Save(&codeModel)
 
 	return true, nil
 }

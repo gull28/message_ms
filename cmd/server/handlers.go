@@ -47,6 +47,37 @@ func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message": "Invalid phone number!"}`))
 			return
 		}
+
+		code := GenerateCode()
+
+		body := "Your verification code is: " + code
+		err := delivery.SendSMS(r.URL.Query().Get("phone"), body)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error sending code!"}`))
+			return
+		}
+
+		codeObj, err := models.CreateCode(app.db, r.URL.Query().Get("userId"), code, time.Now().Add(time.Duration(codeConfig.Expiry)*time.Minute))
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error creating code!"}`))
+			return
+		}
+
+		err = models.CreateSMS(app.db, r.URL.Query().Get("userId"), r.URL.Query().Get("phone"), codeObj.ID)
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"message": "Error sending code!"}`))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Code sent!"}`))
+		return
 	}
 
 	if msgType == "email" {
