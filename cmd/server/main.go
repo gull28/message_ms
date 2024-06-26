@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gull28/message_ms/internal/config"
 	"github.com/gull28/message_ms/internal/db"
 	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
@@ -17,6 +18,7 @@ type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
 	db       *gorm.DB
+	config   config.Config
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +52,7 @@ func main() {
 		errorLog: errorLog,
 		infoLog:  infoLog,
 		db:       db,
+		config:   config.LoadConfig(),
 	}
 
 	srv := &http.Server{

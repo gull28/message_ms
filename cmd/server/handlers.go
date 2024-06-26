@@ -1,146 +1,140 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/gull28/message_ms/internal/config"
 	"github.com/gull28/message_ms/internal/delivery"
 	"github.com/gull28/message_ms/internal/models"
 )
 
-func getMessages(r *http.Request, w http.ResponseWriter) {
+type Response struct {
+	Message string `json:"message"`
+}
 
+func writeJSONResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	response := Response{Message: message}
+	json.NewEncoder(w).Encode(response)
+}
+
+func getMessages(w http.ResponseWriter, r *http.Request) {
+	writeJSONResponse(w, http.StatusOK, "Messages fetched successfully")
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"message": "Hello, World!"}`))
-
-	return
+	writeJSONResponse(w, http.StatusOK, "Hello, World!")
 }
 
 func (app *application) sendCode(w http.ResponseWriter, r *http.Request) {
-	count, err := models.GetResendCount(app.db, r.URL.Query().Get("userId"))
-
-	codeConfig := config.LoadConfig().CodeSettings
-
-	if count >= codeConfig.Resends {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"message": "Try again later!"}`))
+	userId := r.URL.Query().Get("userId")
+	if userId == "" {
+		writeJSONResponse(w, http.StatusBadRequest, "Missing userId")
 		return
 	}
 
+	codeConfig := app.config.CodeSettings // Load config once
+
+	count, err := models.GetResendCount(app.db, userId)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Error getting attempt count!"}`))
+		writeJSONResponse(w, http.StatusInternalServerError, "Error getting attempt count")
+		return
+	}
+
+	if count >= codeConfig.Resends {
+		writeJSONResponse(w, http.StatusForbidden, "Try again later!")
 		return
 	}
 
 	msgType := r.URL.Query().Get("type")
+	switch msgType {
+	case "phone":
+		app.handlePhoneCode(w, r, userId)
+	case "email":
+		app.handleEmailCode(w, r, userId)
+	default:
+		writeJSONResponse(w, http.StatusBadRequest, "Invalid message type")
+	}
+}
 
-	if msgType == "phone" {
-		if ValidatePhone(r.URL.Query().Get("phone")) == false {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Invalid phone number!"}`))
-			return
-		}
-
-		code := GenerateCode()
-
-		body := "Your verification code is: " + code
-		err := delivery.SendSMS(r.URL.Query().Get("phone"), body)
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error sending code!"}`))
-			return
-		}
-
-		codeObj, err := models.CreateCode(app.db, r.URL.Query().Get("userId"), code, time.Now().Add(time.Duration(codeConfig.Expiry)*time.Minute))
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error creating code!"}`))
-			return
-		}
-
-		err = models.CreateSMS(app.db, r.URL.Query().Get("userId"), r.URL.Query().Get("phone"), codeObj.ID)
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error sending code!"}`))
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Code sent!"}`))
+func (app *application) handlePhoneCode(w http.ResponseWriter, r *http.Request, userId string) {
+	phone := r.URL.Query().Get("phone")
+	if !ValidatePhone(phone) {
+		writeJSONResponse(w, http.StatusBadRequest, "Invalid phone number")
 		return
 	}
 
-	if msgType == "email" {
-		if ValidateEmail(r.URL.Query().Get("email")) == false {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Invalid email address!"}`))
-			return
-		}
+	code := GenerateCode()
+	body := "Your verification code is: " + code
 
-		code := GenerateCode()
-
-		err := delivery.SendMail(r.URL.Query().Get("email"), "Verification Code", code)
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error sending code!"}`))
-			return
-		}
-
-		codeObj, err := models.CreateCode(app.db, r.URL.Query().Get("userId"), code, time.Now().Add(time.Duration(codeConfig.Expiry)*time.Minute))
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error creating code!"}`))
-			return
-		}
-
-		err = models.CreateMail(app.db, r.URL.Query().Get("userId"), r.URL.Query().Get("email"), codeObj.ID)
-
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Error creating mail!"}`))
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Code sent!"}`))
+	if err := delivery.SendSMS(phone, body); err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error sending code")
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"message": "Code sent!"}`))
+	expiry := time.Now().Add(time.Duration(app.config.CodeSettings.Expiry) * time.Minute)
+	codeObj, err := models.CreateCode(app.db, userId, code, expiry)
+	if err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error creating code")
+		return
+	}
 
-	return
+	if err := models.CreateSMS(app.db, userId, phone, codeObj.ID); err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error saving SMS record")
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, "Code sent")
+}
+
+func (app *application) handleEmailCode(w http.ResponseWriter, r *http.Request, userId string) {
+	email := r.URL.Query().Get("email")
+	if !ValidateEmail(email) {
+		writeJSONResponse(w, http.StatusBadRequest, "Invalid email address")
+		return
+	}
+
+	code := GenerateCode()
+	if err := delivery.SendMail(email, "Verification Code", code); err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error sending code")
+		return
+	}
+
+	expiry := time.Now().Add(time.Duration(app.config.CodeSettings.Expiry) * time.Minute)
+	codeObj, err := models.CreateCode(app.db, userId, code, expiry)
+	if err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error creating code")
+		return
+	}
+
+	if err := models.CreateMail(app.db, userId, email, codeObj.ID); err != nil {
+		writeJSONResponse(w, http.StatusInternalServerError, "Error saving mail record")
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, "Code sent")
 }
 
 func (app *application) validateCode(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	userId := r.URL.Query().Get("userId")
+	if code == "" || userId == "" {
+		writeJSONResponse(w, http.StatusBadRequest, "Missing code or userId")
+		return
+	}
 
 	isValid, err := models.CheckValidity(app.db, code, userId)
-
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Error validating code!"}`))
+		writeJSONResponse(w, http.StatusInternalServerError, "Error validating code")
 		return
 	}
 
-	if isValid == false {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Invalid code!"}`))
+	if !isValid {
+		writeJSONResponse(w, http.StatusForbidden, "Invalid code")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"message": "Code is valid!"}`))
+	writeJSONResponse(w, http.StatusOK, "Code is valid")
 }
