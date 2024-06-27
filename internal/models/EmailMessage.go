@@ -1,25 +1,34 @@
 package models
 
 import (
+	"errors"
+
 	"github.com/jinzhu/gorm"
 )
 
 type EmailMessage struct {
-	gorm.Model        // base fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`
-	UserId     string `gorm:"not null; uniqueIndex"`
-	Email      string `gorm:"not null;"`
-	CodeID     uint   `gorm:"not null"`
-	Code       Code   `gorm:"foreignKey:CodeID"`
+	gorm.Model
+	UserId string `gorm:"not null;"`
+	Email  string `gorm:"not null"`
+	CodeID uint   `gorm:"not null"`
+	Code   Code   `gorm:"foreignKey:CodeID"`
 }
 
 func GetEmailCodeByUserID(db *gorm.DB, userID uint) (Code, error) {
 	var emailMessage EmailMessage
+
 	if err := db.Where("user_id = ?", userID).First(&emailMessage).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return Code{}, errors.New("user not found")
+		}
 		return Code{}, err
 	}
 
 	var code Code
-	if err := db.Model(&emailMessage).Association("Code").Find(&code); err != nil {
+	if err := db.First(&code, emailMessage.CodeID).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return Code{}, errors.New("code not found for user")
+		}
 		return Code{}, err
 	}
 

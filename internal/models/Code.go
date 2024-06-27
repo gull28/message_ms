@@ -8,13 +8,14 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Code represents the structure for code management
 type Code struct {
 	gorm.Model // base fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`
 	Code       string
 	UserId     string
 	ExpiresAt  time.Time
 	Attempt    int
-	Status     string `gorm:"not null default:'pending' enum('pending', 'failed', 'verified')"`
+	Status     string `gorm:"not null;default:'pending';type:ENUM('pending', 'failed', 'verified')"`
 }
 
 func CheckValidity(db *gorm.DB, code string, userId string) (bool, error) {
@@ -22,55 +23,50 @@ func CheckValidity(db *gorm.DB, code string, userId string) (bool, error) {
 
 	var codeModel Code
 
-	if err := db.Where("UserId = ?", userId).Order("CreatedAt DESC").First(&codeModel).Error; err != nil {
+	err := db.Where("user_id = ? AND status = ?", userId, "pending").
+		Order("created_at DESC").
+		First(&codeModel).Error
+	if err != nil {
 		return false, err
 	}
 
 	if codeModel.Status == "verified" {
-		err := errors.New("Code already verified")
-		return false, err
+		return false, errors.New("code already verified")
 	}
 
 	if codeModel.Attempt >= allowedAttempts {
-		err := errors.New("Maximum attempts reached")
-
-		// set status to failed if not already set
 		if codeModel.Status != "failed" {
 			codeModel.Status = "failed"
-			db.Save(&codeModel)
+			if err := db.Save(&codeModel).Error; err != nil {
+				return false, err
+			}
 		}
-
-		return false, err
+		return false, errors.New("maximum attempts reached")
 	}
 
 	if codeModel.Code != code {
-		err := errors.New("Invalid code")
-
 		codeModel.Attempt++
-
 		if err := db.Save(&codeModel).Error; err != nil {
 			return false, err
 		}
-
-		return false, err
+		return false, errors.New("invalid code")
 	}
 
 	codeModel.Status = "verified"
-	db.Save(&codeModel)
+	if err := db.Save(&codeModel).Error; err != nil {
+		return false, err
+	}
 
 	return true, nil
 }
 
-// GetResendCount returns the number of resend attempts for a given user within a specified time frame
 func GetResendCount(db *gorm.DB, userId string) (int, error) {
-	var code Code
 	var count int
-
 	resendTimer := config.LoadConfig().CodeSettings.ResendTimer
-
 	timeThreshold := time.Now().Add(-time.Duration(resendTimer) * time.Minute)
 
-	if err := db.Model(&code).Where("UserId = ? AND CreatedAt > ?", userId, timeThreshold).Count(&count).Error; err != nil {
+	err := db.Model(&Code{}).Where("user_id = ? AND created_at > ?", userId, timeThreshold).Count(&count).Error
+	if err != nil {
 		return 0, err
 	}
 
